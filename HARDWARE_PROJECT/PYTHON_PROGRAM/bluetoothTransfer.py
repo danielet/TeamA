@@ -1,4 +1,13 @@
 #!/usr/bin/python
+
+#PUT LICENSE LGPL
+
+
+
+
+
+
+
 import serial
 import time
 import random
@@ -9,7 +18,6 @@ import hashlib
 
 #THREAD PART
 import threading 
-#import thread
 
 #BLUETOOTH LIBRARY
 from bluetooth import *
@@ -24,17 +32,16 @@ ctrlPrint 	= 1
 ctrlLoop 	= 1
 client_sock	= -1
 
-def signal_handler(signum, frame):
-    print("W: custom interrupt handler called.")
 
-def temperature(stepResolution, stepExtTemp, stepIntTemp, V20C):
-	extTemp = ((stepResolution * int(stepExtTemp))-500)/10;
-	intTemp = (((stepResolution * int(stepIntTemp)* 0.001)-V20C)/0.001)-20;
 
-	temperatureValues= [extTemp, intTemp];
-	label= ['External','Internal'];
-	print(label);
-	print(temperatureValues);
+
+
+def temperature(stepResolution, stepIntTemp, V20C):
+#	extTemp = ((stepResolution * int(stepExtTemp))-500)/10;
+#	intTemp = (((((2048)/float(4096)/1000) * int(stepIntTemp))-V20C)*1000);
+	intTemp = (((((4096*2)/float(4096)/1000) * int(stepIntTemp))-V20C)*1000);
+
+	temperatureValues= intTemp;
 	return temperatureValues
 
 
@@ -71,12 +78,12 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 	timeinterval=1
 	
 
-	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","TEMP","EXT_TEMP"];
-	Vref 	 	= int(conf_values[0]); 
-	stepResolution 	= Vref/float(conf_values[1]);
+	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","NO2_WE", "NO2_AE","INT_TEMP"];
+	Vref 	 		= int(conf_values[0]); 
+	stepResolution 		= Vref/float(conf_values[1]);
 	#TEMPERATURE SENSOR
-	V20C		= float(conf_values[2])
-	timesample2SendPacket = int(conf_values[-1])
+	V20C			= float(conf_values[2])
+	timesample2SendPacket 	= int(conf_values[-1])
 	count = timesample2SendPacket;
 
 	if(ser.isOpen()):
@@ -91,40 +98,43 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 			lineread 	= ser.readline().rstrip()
 			arrayline 	= lineread.split(",")
 			listValue 	= [ts]
+			print arrayline
 			for valueSensor in arrayline:
 				listValue.append(valueSensor);
-				if((len(listValue) ==7) and not('' in listValue)):
-					temp  = temperature(stepResolution, listValue[-1], listValue[-2], V20C)	;
-					CO_ppb=volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp[1]);
-					O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp[1]);
-					SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp[1]);
-					NO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'NO2A4', temp[1]);
-					PM25=0.1;
-					PM10=1;
-					print (arrayLabel);
-					print (listValue);
-					print("CO ppb:" + str(CO_ppb));			
-					print("O3 ppb:" + str(O3_ppb));			
-					chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, temp[1]];
+			if((len(listValue) == 9) and not('' in listValue)):
+				temp  = temperature(stepResolution, listValue[-1], V20C);
+				CO_ppb=volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp);
+				NO2_ppb=volt2PPB(fileValues, stepResolution, float(listValue[5]), float(listValue[6]), 'NO2A4', temp);
+				NO2_O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp);
+				O3_ppb = NO2_O3_ppb - NO2_ppb
+				SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp);
+				PM25=0.1;
+				PM10=1;
+				print (arrayLabel);
+				print (listValue);
+				print("CO ppb:" + str(CO_ppb));			
+				print("O3 ppb:" + str(O3_ppb));			
+				print("NO2 ppb:" + str(NO2_ppb));			
+				print("TEMP:" + str(temp));			
+				chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, NO2_ppb,PM25 ,temp];
 				#IF BT CONNECTION OPEN THEN WRITE	
-					lockCSVWriteEnable.acquire()
-					if(ctrlPrint == 1):
-						csv_writer.writerow(chemicalQuantities2Print)
-					lockCSVWriteEnable.release()
-					
-					count = count -1;
-					if(count == 0 ):
-						print("SEND DATA: " + str(listValue));
-						string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(SO2_ppb)+","+str(NO2_ppb)+","+str(PM25)+","+str(PM10)+","+str(temp[1]);
-						count  = timesample2SendPacket;
-						try:
-							lockCSVWriteEnable.acquire()
-							if(ctrlPrint == 1 and client_sock != -1):
-								client_sock.send(string2Send)
+				lockCSVWriteEnable.acquire()
+				if(ctrlPrint == 1):
+					csv_writer.writerow(chemicalQuantities2Print)
+				lockCSVWriteEnable.release()	
+				count = count -1;
+				if(count == 0 ):
+					string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(SO2_ppb)+","+str(NO2_ppb)+","+str(PM25)+","+str(PM10)+","+str(temp);
+					print("SEND DATA: " + string2Send);
+					count  = timesample2SendPacket;
+					try:
+						lockCSVWriteEnable.acquire()
+						if(ctrlPrint == 1 and client_sock != -1):
+							client_sock.send(string2Send)
 							
-							lockCSVWriteEnable.release()
-						except BluetoothError as error:
-							print "SOCKET CLOSE BY APP"
+						lockCSVWriteEnable.release()
+					except BluetoothError as error:
+						print "SOCKET CLOSE BY APP"
 					#		ctrlLoopTmp = 0
 					#		break	
 			
@@ -210,7 +220,7 @@ def waitBluetoothConnection(fileValues , lockLoop, lockCSVWrite):
 
         	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
         	filename        = hashlib.md5(randomname).hexdigest() + '.csv'
-        	dirName         = "./OUTPUT_FILE/"
+        	dirName         = "/home/udooer/TeamA/HARDWARE_PROJECT/PYTHON_PROGRAM/OUTPUT_FILE/"
         	csv_file        = open(dirName+filename, 'w')
 
 		t=threading.Thread(target=mainLoop,args=(fileValues, ser, csv_file, conf_values,lockLoop, lockCSVWrite))
@@ -228,15 +238,15 @@ def waitBluetoothConnection(fileValues , lockLoop, lockCSVWrite):
 
 if __name__ == "__main__":
 	#READ FILES CONFIGURE
-	pathconfig 	= './CONFIG_FILE';
+	pathconfig 	= '/home/udooer/TeamA/HARDWARE_PROJECT/PYTHON_PROGRAM/CONFIG_FILE';
 	temperatureFile	= 'lookupTableSensors.csv';
-	zeroOffsetFile 	= 'ZERO_A4_25000014.csv';
+	zeroOffsetFile 	= 'ZERO_A4_25000015.csv';
 	MAIN_FILE_CONF 	= 'MAIN_CONF.csv'; 
 	fileValues 	= readFiles.readFiles(pathconfig , temperatureFile,zeroOffsetFile, MAIN_FILE_CONF)
 	lockLoop 	= threading.Lock()
 	lockCSVWrite	= threading.Lock()
 	
-	signal.signal(signal.SIGINT, signal_handler)
+	#signal.signal(signal.SIGINT, signal_handler)
 	
 	waitBluetoothConnection(fileValues, lockLoop, lockCSVWrite)
 	
