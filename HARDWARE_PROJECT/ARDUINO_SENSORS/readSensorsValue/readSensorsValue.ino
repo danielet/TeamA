@@ -45,6 +45,7 @@ void setup()
 
   digitalWrite(digit, HIGH);
   digitalWrite(segment, HIGH);
+  
   delayLoop = LOOP_DEFAULT_VALUE;
   analogReadResolution(12);
 

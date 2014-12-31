@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="/Users/matteo/.gradle/caches/modules-2/files-2.1/caches/modules-2/files-2.1/com.github.pires/obd-java-api/1.0-RC10/f92715554cf51c670452d536ceb009d69b3fc8e7/obd-java-api-1.0-RC10.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="f92715554cf51c670452d536ceb009d69b3fc8e7">
+        <dex dex="/Users/matteo/Desktop/GIT_UCSD_KACST/SDN_UCSD/obd2_ucsd/app/build/intermediates/pre-dexed/debug/obd-java-api-1.0-RC10-a559bd2debe30f2fc20e32f10912231aad3be44b.jar" />
+    </item>
+
+</items>

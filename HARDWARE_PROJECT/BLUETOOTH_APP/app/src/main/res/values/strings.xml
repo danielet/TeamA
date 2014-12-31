@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Bluetooth discovery</string>
+    <string name="action_settings"> BOH</string>
+</resources>

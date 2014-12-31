@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:title="Maximum Acceleration"
+        android:key="maxAcc"
+        android:defaultValue="2"
+        android:summary="Please provide maximum acceleration in [m/s^2]">
+
+    </EditTextPreference>
+
+    <EditTextPreference
+        android:title="Maximum Deceleration"
+        android:key="maxDec"
+        android:defaultValue="-2"
+        android:summary="Please provide maximum deceleration in [m/s^2]">
+
+    </EditTextPreference>
+
+
+    <EditTextPreference
+        android:title="Vehicle length"
+        android:key="length"
+        android:defaultValue="5"
+        android:summary="Please provide the vehicle length in [m]">
+    </EditTextPreference>
+
+
+    <EditTextPreference
+        android:title="Timesample"
+        android:key="timesample"
+        android:defaultValue="0.03"
+        android:summary="Please provide the time sample in [s] to gather velocity and distance.">
+    </EditTextPreference>
+
+
+    <EditTextPreference
+        android:title="smvresolution"
+        android:key="smvresolution"
+        android:defaultValue="0.005"
+        android:summary="Please provide the resolution time in [s] to estimate the ... .">
+    </EditTextPreference>
+
+    <ListPreference
+        android:title="Estimate Distance"
+        android:summary="Select the kind of technology to estimate distance between vehicles"
+        android:key="estimation"
+        android:defaultValue="2"
+        android:entries="@array/listArray"
+        android:entryValues="@array/listValues" />
+
+    <EditTextPreference
+        android:title="distance average"
+        android:key="distance"
+        android:defaultValue="20"
+        android:summary="Please provide the average distance between two cars .">
+    </EditTextPreference>
+
+    <EditTextPreference
+        android:title="distance standard deviation"
+        android:key="stdDistance"
+        android:defaultValue="1.5"
+        android:summary="Please provide the standard deviation distance between two cars .">
+    </EditTextPreference>
+
+</PreferenceScreen>
