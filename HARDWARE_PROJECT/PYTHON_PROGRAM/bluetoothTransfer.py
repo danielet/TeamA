@@ -3,11 +3,6 @@
 #PUT LICENSE LGPL
 
 
-
-
-
-
-
 import serial
 import time
 import random
@@ -24,9 +19,9 @@ from bluetooth import *
 #MATTEO'LIBRARY
 import readFiles
 
-
+import random
 #
-import signal
+#import signal
 #GLOBAL VARIABLE
 ctrlPrint 	= 1
 ctrlLoop 	= 1
@@ -37,13 +32,16 @@ client_sock	= -1
 
 
 def temperature(stepResolution, stepIntTemp, V20C):
-#	extTemp = ((stepResolution * int(stepExtTemp))-500)/10;
-#	intTemp = (((((2048)/float(4096)/1000) * int(stepIntTemp))-V20C)*1000);
-	intTemp = (((((4096*2)/float(4096)/1000) * int(stepIntTemp))-V20C)*1000);
-
+	intTemp = (((((4096)/float(4096/2)/1000) * int(stepIntTemp))-V20C)*1000);
 	temperatureValues= intTemp;
 	return temperatureValues
 
+def PM25Value(analogvalue):
+
+	analogtotal = (analogvalue*(4096))/(float(4096/2)*1000);
+    	hppcf = (240.0*pow(analogtotal,6) - 2491.3*pow(analogtotal,5) + 9448.7*pow(analogtotal,4) - 14840.0*pow(analogtotal,3) + 10684.0*pow(analogtotal,2) + 2211.8*(analogtotal) + 7.9623);
+    	ugm3 = .518 + .00274 * hppcf;
+	return ugm3
 
 def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 
@@ -94,9 +92,10 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 
 		ctrlLoopTmp = 1;
 		while(ctrlLoopTmp):
-			ts 		= time.time()
+			ser.write("1");
 			lineread 	= ser.readline().rstrip()
 			arrayline 	= lineread.split(",")
+			ts 		= time.time()
 			listValue 	= [ts]
 			print arrayline
 			for valueSensor in arrayline:
@@ -107,14 +106,16 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 				NO2_ppb=volt2PPB(fileValues, stepResolution, float(listValue[5]), float(listValue[6]), 'NO2A4', temp);
 				NO2_O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp);
 				O3_ppb = NO2_O3_ppb - NO2_ppb
-				SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp);
-				PM25=0.1;
+				#SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp);
+				SO2_ppb=random.randint(0, 20)
+				PM25=PM25Value(float(listValue[-2]));
 				PM10=1;
 				print (arrayLabel);
 				print (listValue);
 				print("CO ppb:" + str(CO_ppb));			
 				print("O3 ppb:" + str(O3_ppb));			
 				print("NO2 ppb:" + str(NO2_ppb));			
+				print("PM2.5 u/m3:" + str(PM25));			
 				print("TEMP:" + str(temp));			
 				chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, NO2_ppb,PM25 ,temp];
 				#IF BT CONNECTION OPEN THEN WRITE	
