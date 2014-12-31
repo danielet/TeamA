@@ -16,6 +16,17 @@ from bluetooth import *
 #MATTEO'LIBRARY
 import readFiles
 
+
+#
+import signal
+#GLOBAL VARIABLE
+ctrlPrint 	= 1
+ctrlLoop 	= 1
+client_sock	= -1
+
+def signal_handler(signum, frame):
+    print("W: custom interrupt handler called.")
+
 def temperature(stepResolution, stepExtTemp, stepIntTemp, V20C):
 	extTemp = ((stepResolution * int(stepExtTemp))-500)/10;
 	intTemp = (((stepResolution * int(stepIntTemp)* 0.001)-V20C)/0.001)-20;
@@ -52,26 +63,30 @@ def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 	ppb	  = voltagePollution * ppbOvermV;
 	return ppb
 
-def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
+def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEnable):
+
+	global ctrlLoop	
+	global ctrlPrint
+	global client_sock
+	timeinterval=1
 	
-	timeing2Wait=1
-	
-	timesample2SendPacket = int(conf_values[-1])
-	count = timesample2SendPacket;
+
 	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","TEMP","EXT_TEMP"];
 	Vref 	 	= int(conf_values[0]); 
-	
 	stepResolution 	= Vref/float(conf_values[1]);
 	#TEMPERATURE SENSOR
 	V20C		= float(conf_values[2])
-	
+	timesample2SendPacket = int(conf_values[-1])
+	count = timesample2SendPacket;
+
 	if(ser.isOpen()):
 		print("SERIAL OPENED");
 		ser.flushInput()
 
 		csv_writer = csv.writer(csv_file)
-		ctrlLoop = 1;
-		while(ctrlLoop):
+
+		ctrlLoopTmp = 1;
+		while(ctrlLoopTmp):
 			ts 		= time.time()
 			lineread 	= ser.readline().rstrip()
 			arrayline 	= lineread.split(",")
@@ -87,45 +102,71 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 					print("CO ppb:" + str(CO_ppb));			
 					print("O3 ppb:" + str(O3_ppb));			
 					chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, temp[1]];
-					csv_writer.writerow(chemicalQuantities2Print)
+				#IF BT CONNECTION OPEN THEN WRITE	
+					lockCSVWriteEnable.acquire()
+					if(ctrlPrint == 1):
+						csv_writer.writerow(chemicalQuantities2Print)
+					lockCSVWriteEnable.release()
+					
 					count = count -1;
 					if(count == 0 ):
 						print("SEND DATA: " + str(listValue));
-						string2Send =str(CO_ppb)+","+str(O3_ppb)+","+str(temp[1]);
+						string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(temp[1]);
+						count  = timesample2SendPacket;
 						try:
-							client_sock.send(string2Send)
-							count  = timesample2SendPacket;
+							lockCSVWriteEnable.acquire()
+							if(ctrlPrint == 1 and client_sock != -1):
+								client_sock.send(string2Send)
+							
+							lockCSVWriteEnable.release()
 						except BluetoothError as error:
 							print "SOCKET CLOSE BY APP"
-							ctrlLoop = 0
-							break	
+					#		ctrlLoopTmp = 0
+					#		break	
 			
-			time.sleep(timeing2Wait)
+			lockLoop.acquire()
+			ctrlLoopTmp = ctrlLoop
+			lockLoop.release()			
+			time.sleep(timeinterval)
+	else:
+		print("SERIAL ERROR")
+	print("OUT FROM MAIN")
+	#ser.close()
 ##############################################
 
 ##############################################
 
-def controlFromBT(client):
-	ctrlLoop = 1
-	while(ctrlLoop):
-		print("HERE 1")
+def controlFromBT(client_sock, lockLoop):
+	global ctrlLoop
+	ctrlLoopTmp = 1
+	while(ctrlLoopTmp):
 		try:
-			recv1 = client.recv(1024)
-			print("HERE 2 " + str(recv1))
+			recv1 = client_sock.recv(1024)
+			print("RECV: " + str(recv1))
 			ctrlLoop = 0
-			print("%s "% recv1)
+			print("RECV: %s "% recv1)
+			if(recv1 == "CLOSE"):
+				lockLoop.acquire()
+				ctrlLoop = 0;
+				ctrlLoopTmp = ctrlLoop
+				lockLoop.release()
+				break
+		#COMMAND PART
+
 		except BluetoothError as error:
+		 	lockLoop.acquire()
 			ctrlLoop = 0
+			lookLoop.release()
 			break
 ##############################################
 
-##############################################
-def waitBluetoothConnection(fileValues):
 
+def BTThread(lockLoop, lockCSVWriteEnable):
+	global ctrlPrint
+	global client_sock
 	uuid = "00001101-0000-1000-8000-00805F9B34FB";
-
+	print("WAIT BLUETOOTH CONNECTION");
 	while(1):
-		conf_values	= fileValues.readConfiguration();	
 		server_sock	= BluetoothSocket(RFCOMM)
 		server_sock.bind(("",1))
 		server_sock.listen(1)
@@ -133,32 +174,52 @@ def waitBluetoothConnection(fileValues):
 		port 		= server_sock.getsockname()[1]
 		advertise_service(server_sock , "TEST", service_id= uuid);
 		print("WAIT BLUETOOTH CONNECTION");
-		client_sock,address = server_sock.accept()
+		client_sock_tmp,address = server_sock.accept()
 		print "Accepted connection from ",address
+	
+		t=threading.Thread(target=controlFromBT, args=(client_sock_tmp,lockLoop))
+		t.start()
+#WRITE ON FILE	
+		lockCSVWriteEnable.acquire()
+		ctrlPrint = 1
+		client_sock = client_sock_tmp
+		lockCSVWriteEnable.release()
+		t.join()
+		lockCSVWriteEnable.acquire()
+		ctrlPrint 	= 0
+		client_sock.close()
+		server_sock.close()
+		client_sock 	= -1
+		lockCSVWriteEnable.release()
+##############################################
+def waitBluetoothConnection(fileValues , lockLoop, lockCSVWrite):
+	global ctrlLoop
 
-		ser 		= serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=1)
+	ser 		= serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=1)
+	t=threading.Thread(target=BTThread,args=(lockLoop, lockCSVWrite))
+	t.start()
+	while(1):
+		print "Wait"
+		time.sleep(1)
+		conf_values	= fileValues.readConfiguration();	
+
 
         	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
         	filename        = hashlib.md5(randomname).hexdigest() + '.csv'
         	dirName         = "./OUTPUT_FILE/"
         	csv_file        = open(dirName+filename, 'w')
 
-		threads=[]	
-		#mainLoop(fileValues, ser, csv_file, server_sock ,client_sock, conf_values) 
-		t=threading.Thread(target=mainLoop,args=(fileValues, ser, csv_file, server_sock ,client_sock, conf_values))
-		threads.append(t)
+		t=threading.Thread(target=mainLoop,args=(fileValues, ser, csv_file, conf_values,lockLoop, lockCSVWrite))
 		t.start()
-		t=threading.Thread(target=controlFromBT, args=(client_sock,))
-		threads.append(t)
-		t.start()
-	
-		for tt in threads:
-			tt.join()
-		
-		ser.close()
-		client_sock.close()
+		t.join()
 		csv_file.close()
-		server_sock.close()
+		lockLoop.acquire()
+                ctrlLoop = 1;
+		print "QUA GHE RIVO??%d" % ctrlLoop
+                lockLoop.release()
+	
+	print("CLOSE SERIAL")
+	ser.close()
 ######################################################################
 
 if __name__ == "__main__":
@@ -168,5 +229,10 @@ if __name__ == "__main__":
 	zeroOffsetFile 	= 'ZERO_A4_25000014.csv';
 	MAIN_FILE_CONF 	= 'MAIN_CONF.csv'; 
 	fileValues 	= readFiles.readFiles(pathconfig , temperatureFile,zeroOffsetFile, MAIN_FILE_CONF)
-	waitBluetoothConnection(fileValues)
+	lockLoop 	= threading.Lock()
+	lockCSVWrite	= threading.Lock()
+	
+	signal.signal(signal.SIGINT, signal_handler)
+	
+	waitBluetoothConnection(fileValues, lockLoop, lockCSVWrite)
 	
