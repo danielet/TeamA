@@ -52,18 +52,24 @@ def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 	ppb	  = voltagePollution * ppbOvermV;
 	return ppb
 
-def mainLoop(fileValuesa, ser, csv_file, sock):
-
-	timesample2SendPacket = 5
+def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
+	
+	timeing2Wait=1
+	
+	timesample2SendPacket = int(conf_values[-1])
 	count = timesample2SendPacket;
 	
 	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","TEMP","EXT_TEMP"];
-	Vref 	 	= 3300; 
+	Vref 	 	= int(conf_values[0]); 
 	
-	stepResolution 	= Vref/float(4096);
+	stepResolution 	= Vref/float(conf_values[1]);
 	#TEMPERATURE SENSOR
-	V20C		= 0.297
+	V20C		= float(conf_values[2])
 	
+	print stepResolution
+	print V20C
+	print Vref
+	print timesample2SendPacket	
 	if(ser.isOpen()):
 		print("SERIAL OPENED");
 		ser.flushInput()
@@ -71,57 +77,48 @@ def mainLoop(fileValuesa, ser, csv_file, sock):
 		csv_writer = csv.writer(csv_file)
 		ctrlLoop = 1;
 		while(ctrlLoop):
-			ts = time.time()
-			lineread = ser.readline().rstrip()
-#			try:
-			arrayline = lineread.split(",")
-			listValue =[ts]
+			ts 		= time.time()
+			lineread 	= ser.readline().rstrip()
+			arrayline 	= lineread.split(",")
+			listValue 	= [ts]
 			for valueSensor in arrayline:
 				listValue.append(valueSensor);
-				#print('HERE' + str(len(listValue)))			
-				if(len(listValue) ==7):
+				if((len(listValue) ==7) and not('' in listValue)):
+					print len(listValue)
+					print listValue
 					csv_writer.writerow(listValue)
-					count = count -1;
-					temp = temperature(stepResolution, listValue[-1], listValue[-2], V20C)	;
-				
+					temp  = temperature(stepResolution, listValue[-1], listValue[-2], V20C)	;
 					CO_ppb=volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp[1]);
 					O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp[1]);
 					print (arrayLabel);
 					print (listValue);
 					print("CO ppb:" + str(CO_ppb));			
 					print("O3 ppb:" + str(O3_ppb));			
-					if(count == 0):
-
+					count = count -1;
+					if(count == 0 ):
 						print("SEND DATA: " + str(listValue));
 						string2Send =str(CO_ppb)+","+str(O3_ppb)+","+str(temp[1]);
-						sock.send(string2Send)
-						count  = timesample2SendPacket;
+						try:
+							client_sock.send(string2Send)
+							count  = timesample2SendPacket;
+						except BluetoothError as error:
+							print "HERE CLOSE"
+							ctrlLoop = 0
+							ser.close()
+							client_sock.close()
+							csv_file.close()
+							server_sock.close()
+							break	
 			
-			time.sleep(1)
-			#except ser.SerialTimeoutException:
-			#	print('Data Could Not Be Read')
-#			except:
-#				print "disconnect with client server"
-				#ctrlLoop = 0;
-#				continue
+			time.sleep(timeing2Wait)
 
+	waitBluetoothConnection(fileValues)
 
 ##############################################
-######################################################################
-
-if __name__ == "__main__":
-	#READ FILES CONFIGURE
-	pathconfig = './CONFIG_FILE';
-	temperatureFile='lookupTableSensors.csv';
-	zeroOffsetFile ='ZERO_A4_25000014.csv';
-	fileValues = readFiles.readFiles(pathconfig , temperatureFile,zeroOffsetFile)
-
-
-
-
+def waitBluetoothConnection(fileValues):
+	conf_values	= fileValues.readConfiguration();
+	print conf_values
 	uuid = "00001101-0000-1000-8000-00805F9B34FB";
-	#uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee";
-	#port = 1
 	
 	server_sock=BluetoothSocket(RFCOMM)
 	server_sock.bind(("",1))
@@ -134,7 +131,6 @@ if __name__ == "__main__":
 	print "Accepted connection from ",address
 
 	
-	
 	ser = serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=1)
 
         randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
@@ -143,4 +139,15 @@ if __name__ == "__main__":
         csv_file        = open(dirName+filename, 'w')
 
 	
-	mainLoop(fileValues, ser, csv_file, client_sock) 
+	mainLoop(fileValues, ser, csv_file, server_sock ,client_sock, conf_values) 
+######################################################################
+
+if __name__ == "__main__":
+	#READ FILES CONFIGURE
+	pathconfig 	= './CONFIG_FILE';
+	temperatureFile	= 'lookupTableSensors.csv';
+	zeroOffsetFile 	= 'ZERO_A4_25000014.csv';
+	MAIN_FILE_CONF 	= 'MAIN_CONF.csv'; 
+	fileValues 	= readFiles.readFiles(pathconfig , temperatureFile,zeroOffsetFile, MAIN_FILE_CONF)
+	waitBluetoothConnection(fileValues)
+	

@@ -3,11 +3,13 @@ import csv
 
 
 class readFiles:
-	fileTemp 	= ''
-	fileOffset = ''
-	def __init__(self, pathname, filenameTemperature, filenameOffset ):
-		self.fileTemp =  pathname+'/'+filenameTemperature;
-		self.fileOffset =  pathname+'/'+filenameOffset;
+	fileTemp		= ''
+	fileOffset 		= ''
+	fileConfiguration 	= ''
+	def __init__(self, pathname, filenameTemperature, filenameOffset, filenameConfiguration ):
+		self.fileTemp 		=  pathname+'/'+filenameTemperature;
+		self.fileOffset 	=  pathname+'/'+filenameOffset;
+		self.fileConfiguration 	=  pathname+'/'+filenameConfiguration;
 
 	def readTemperatureTable(self):
 		#print self.fileOffset
@@ -27,3 +29,11 @@ class readFiles:
 				table.append(row)
 			return table
 
+	def readConfiguration(self):
+		with open(self.fileConfiguration, 'rb') as csvfile:
+			confValues = csv.reader(csvfile, delimiter=',')
+			count = 0
+			for row in confValues:
+				if(count == 1):
+					 return row
+				count = count + 1;
