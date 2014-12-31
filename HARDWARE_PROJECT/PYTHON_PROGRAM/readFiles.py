@@ -10,14 +10,12 @@ class readFiles:
 		self.fileOffset =  pathname+'/'+filenameOffset;
 
 	def readTemperatureTable(self):
-		print self.fileOffset
+		#print self.fileOffset
 		with open(self.fileTemp, 'rb') as csvfile:
 			tempTable = csv.reader(csvfile, delimiter=',')
-			#return tempTable
-			table={}
-			for row in zeroValues:
+			table=[]
+			for row in tempTable:
 				table.append(row)
-			#	print row
 			return table
 
 
@@ -27,6 +25,5 @@ class readFiles:
 			table=[]
 			for row in zeroValues:
 				table.append(row)
-				print row
 			return table
 
