@@ -97,6 +97,10 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 					temp  = temperature(stepResolution, listValue[-1], listValue[-2], V20C)	;
 					CO_ppb=volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp[1]);
 					O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp[1]);
+					SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp[1]);
+					NO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'NO2A4', temp[1]);
+					PM25=0.1;
+					PM10=1;
 					print (arrayLabel);
 					print (listValue);
 					print("CO ppb:" + str(CO_ppb));			
@@ -111,7 +115,7 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 					count = count -1;
 					if(count == 0 ):
 						print("SEND DATA: " + str(listValue));
-						string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(temp[1]);
+						string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(SO2_ppb)+","+str(NO2_ppb)+","+str(PM25)+","+str(PM10)+","+str(temp[1]);
 						count  = timesample2SendPacket;
 						try:
 							lockCSVWriteEnable.acquire()
@@ -156,7 +160,7 @@ def controlFromBT(client_sock, lockLoop):
 		except BluetoothError as error:
 		 	lockLoop.acquire()
 			ctrlLoop = 0
-			lookLoop.release()
+			lockLoop.release()
 			break
 ##############################################
 
