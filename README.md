@@ -1,2 +1,0 @@
-# TeamA
-Repository for TeamA
