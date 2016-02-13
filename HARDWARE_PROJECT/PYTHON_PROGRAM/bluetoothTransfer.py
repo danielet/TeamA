@@ -7,14 +7,16 @@ import string
 import hashlib
 
 
+#THREAD PART
+
+import thread
+
 #BLUETOOTH LIBRARY
-#import bluetooth
 from bluetooth import *
 #MATTEO'LIBRARY
 import readFiles
 
 def temperature(stepResolution, stepExtTemp, stepIntTemp, V20C):
-	#print stepIntTemp	
 	extTemp = ((stepResolution * int(stepExtTemp))-500)/10;
 	intTemp = (((stepResolution * int(stepIntTemp)* 0.001)-V20C)/0.001)-20;
 
@@ -39,16 +41,14 @@ def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 	for row in fileValues.readTemperatureTable():
 		if(row[0]==pollution):
 			index = (int(round(temperature)+30)/10)+1
-			n = float(row[int(index)])
-#			n=1.18
-			#print n	
-
+			if(index < 10 and index >= 0):
+				n = float(row[int(index)])
+			else:
+				n = 1;
 
 	voltageWE 	= stepResolution * stepWE;
 	voltageAE 	= stepResolution * stepAE;
-	
 	voltagePollution = (voltageWE - zeroVoltageWE) - n*(voltageAE - zeroVoltageAE);
-
 	ppb	  = voltagePollution * ppbOvermV;
 	return ppb
 
@@ -58,7 +58,6 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 	
 	timesample2SendPacket = int(conf_values[-1])
 	count = timesample2SendPacket;
-	
 	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","TEMP","EXT_TEMP"];
 	Vref 	 	= int(conf_values[0]); 
 	
@@ -66,10 +65,6 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 	#TEMPERATURE SENSOR
 	V20C		= float(conf_values[2])
 	
-	print stepResolution
-	print V20C
-	print Vref
-	print timesample2SendPacket	
 	if(ser.isOpen()):
 		print("SERIAL OPENED");
 		ser.flushInput()
@@ -84,9 +79,6 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 			for valueSensor in arrayline:
 				listValue.append(valueSensor);
 				if((len(listValue) ==7) and not('' in listValue)):
-					print len(listValue)
-					print listValue
-					csv_writer.writerow(listValue)
 					temp  = temperature(stepResolution, listValue[-1], listValue[-2], V20C)	;
 					CO_ppb=volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp[1]);
 					O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp[1]);
@@ -94,6 +86,8 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 					print (listValue);
 					print("CO ppb:" + str(CO_ppb));			
 					print("O3 ppb:" + str(O3_ppb));			
+					chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, temp[1]];
+					csv_writer.writerow(chemicalQuantities2Print)
 					count = count -1;
 					if(count == 0 ):
 						print("SEND DATA: " + str(listValue));
@@ -117,7 +111,6 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 ##############################################
 def waitBluetoothConnection(fileValues):
 	conf_values	= fileValues.readConfiguration();
-	print conf_values
 	uuid = "00001101-0000-1000-8000-00805F9B34FB";
 	
 	server_sock=BluetoothSocket(RFCOMM)
@@ -126,11 +119,10 @@ def waitBluetoothConnection(fileValues):
 	
 	port = server_sock.getsockname()[1]
 	advertise_service(server_sock , "TEST", service_id= uuid);
-
+	print("WAIT BLUETOOTH CONNECTION");
 	client_sock,address = server_sock.accept()
 	print "Accepted connection from ",address
 
-	
 	ser = serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=1)
 
         randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
