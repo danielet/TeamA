@@ -8,8 +8,8 @@ import hashlib
 
 
 #THREAD PART
-
-import thread
+import threading 
+#import thread
 
 #BLUETOOTH LIBRARY
 from bluetooth import *
@@ -96,42 +96,69 @@ def mainLoop(fileValuesa, ser, csv_file, server_sock ,client_sock, conf_values):
 							client_sock.send(string2Send)
 							count  = timesample2SendPacket;
 						except BluetoothError as error:
-							print "HERE CLOSE"
+							print "SOCKET CLOSE BY APP"
 							ctrlLoop = 0
-							ser.close()
-							client_sock.close()
-							csv_file.close()
-							server_sock.close()
 							break	
 			
 			time.sleep(timeing2Wait)
+##############################################
 
-	waitBluetoothConnection(fileValues)
+##############################################
+
+def controlFromBT(client):
+	ctrlLoop = 1
+	while(ctrlLoop):
+		print("HERE 1")
+		try:
+			recv1 = client.recv(1024)
+			print("HERE 2 " + str(recv1))
+			ctrlLoop = 0
+			print("%s "% recv1)
+		except BluetoothError as error:
+			ctrlLoop = 0
+			break
+##############################################
 
 ##############################################
 def waitBluetoothConnection(fileValues):
-	conf_values	= fileValues.readConfiguration();
+
 	uuid = "00001101-0000-1000-8000-00805F9B34FB";
-	
-	server_sock=BluetoothSocket(RFCOMM)
-	server_sock.bind(("",1))
-	server_sock.listen(1)
-	
-	port = server_sock.getsockname()[1]
-	advertise_service(server_sock , "TEST", service_id= uuid);
-	print("WAIT BLUETOOTH CONNECTION");
-	client_sock,address = server_sock.accept()
-	print "Accepted connection from ",address
 
-	ser = serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=1)
-
-        randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
-        filename        = hashlib.md5(randomname).hexdigest() + '.csv'
-        dirName         = "./OUTPUT_FILE/"
-        csv_file        = open(dirName+filename, 'w')
-
+	while(1):
+		conf_values	= fileValues.readConfiguration();	
+		server_sock	= BluetoothSocket(RFCOMM)
+		server_sock.bind(("",1))
+		server_sock.listen(1)
 	
-	mainLoop(fileValues, ser, csv_file, server_sock ,client_sock, conf_values) 
+		port 		= server_sock.getsockname()[1]
+		advertise_service(server_sock , "TEST", service_id= uuid);
+		print("WAIT BLUETOOTH CONNECTION");
+		client_sock,address = server_sock.accept()
+		print "Accepted connection from ",address
+
+		ser 		= serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=1)
+
+        	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+        	filename        = hashlib.md5(randomname).hexdigest() + '.csv'
+        	dirName         = "./OUTPUT_FILE/"
+        	csv_file        = open(dirName+filename, 'w')
+
+		threads=[]	
+		#mainLoop(fileValues, ser, csv_file, server_sock ,client_sock, conf_values) 
+		t=threading.Thread(target=mainLoop,args=(fileValues, ser, csv_file, server_sock ,client_sock, conf_values))
+		threads.append(t)
+		t.start()
+		t=threading.Thread(target=controlFromBT, args=(client_sock,))
+		threads.append(t)
+		t.start()
+	
+		for tt in threads:
+			tt.join()
+		
+		ser.close()
+		client_sock.close()
+		csv_file.close()
+		server_sock.close()
 ######################################################################
 
 if __name__ == "__main__":
