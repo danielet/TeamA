@@ -54,11 +54,11 @@ function search_streaming() {
     if (ds[0].data.items.length == 0) { return; }
     for (var i = 0; i < ds[0].data.items.length; i++) {
         var data = ds[0].data.items[i].data;
-        make_marker(data.LAT, data.LNG, data.TEMP, data.O3, data.SO2, data.NO2, data.CO, data.PM25);
+        make_marker(data.LAT, data.LNG, data.TEMP, data.O3, data.SO2, data.NO2, data.CO, data.PM25, data.USER_ID);
     }
 }
-
-function make_marker(lat, lng, TEMP, O3, SO2, NO2, CO, PM25) {
+var savePos = "";
+function make_marker(lat, lng, TEMP, O3, SO2, NO2, CO, PM25, KEY) {
     var marker = new google.maps.Marker({
         position: {
             lat: parseFloat(lat),
@@ -70,9 +70,22 @@ function make_marker(lat, lng, TEMP, O3, SO2, NO2, CO, PM25) {
         so2: SO2,
         no2: NO2,
         co: CO,
-        pm25: PM25
+        pm25: PM25,
+        m_key: KEY
     });
     map.markerArr.push(marker);
+    if (savePos != "") {
+        if (savePos == KEY) {
+            txt_LAT.setValue(lat);
+            txt_LNG.setValue(lng);
+            txt_TEMP.setValue(TEMP);
+            txt_O3.setValue(O3);
+            txt_SO2.setValue(SO2);
+            txt_NO2.setValue(NO2);
+            txt_CO.setValue(CO);
+            txt_PM25.setValue(PM25);
+        }
+    }
 
     // Add the circle for this city to the map.
     var color = check_color(O3, SO2, NO2, CO, PM25);
@@ -94,6 +107,7 @@ function make_marker(lat, lng, TEMP, O3, SO2, NO2, CO, PM25) {
     marker.addListener('click', function () {
 
         //databind
+        savePos = marker.m_key;
         txt_LAT.setValue(marker.position.lat());
         txt_LNG.setValue(marker.position.lng());
         txt_TEMP.setValue(marker.temperature);
@@ -185,7 +199,7 @@ btn_Admin.eClick = function () {
         if (result[0].data.items[0].data.RESULT == "Nodata") {
             lbl_message.setText('Your id or password is wrong');
         } else if (result[0].data.items[0].data.RESULT == "success") {
-            location.replace("main.html");
+            location.replace("main.php");
         } else if (result[0].data.items[0].data.RESULT == "Change_Password") {
             window.close();
             var pnl_PasswordChange = ApPanel.create();
@@ -213,7 +227,7 @@ btn_Admin.eClick = function () {
 
             var btn_login = ApButton.create('Save');
             btn_login.setWidth(87);
-            var lbl_message = ApLabel.create('');
+            var lbl_message2 = ApLabel.create('');
 
 
             pnl_PasswordChange.divideH(tbl_PwImg, tbl_PasswordChange);
@@ -229,7 +243,34 @@ btn_Admin.eClick = function () {
             win_PasswordChange.show();
         } else if (result[0].data.items[0].data.RESULT == "Wrong_password") {
             lbl_message.setText('Your id or password is wrong');
+        } else if (result[0].data.items[0].data.RESULT == "many_fail") {
+            var param = DBParams.create();
+            param.addParam('WORK_TYPE', 'FORGOT_PASSWORD');
+            param.addParam('USER_ID', txt_ID.getValue());
+            var url = '../Server/WebService.php';
+            var result = DBCONN(url, param);
+            if (result[0].data.items[0].data.RESULT == "success") {
+                ApMsg.warning('your new password mail was sended.');
+            } else if (result[0].data.items[0].data.RESULT == "noId") {
+                lbl_message.setText('Your id is not exist.');
+            } else {
+                lbl_message.setText('Your account is not exist.');
+            }
         }
         
+    }
+    btn_forgot.eClick = function () {
+        var param = DBParams.create();
+        param.addParam('WORK_TYPE', 'FORGOT_PASSWORD');
+        param.addParam('USER_ID', txt_ID.getValue());
+        var url = '../Server/WebService.php';
+        var result = DBCONN(url, param);
+        if (result[0].data.items[0].data.RESULT == "success") {
+            ApMsg.warning('mail was sended.');
+        } else if (result[0].data.items[0].data.RESULT == "noId") {
+            lbl_message.setText('Your id is not exist.');
+        } else {
+            lbl_message.setText('Your account is not exist.');
+        } 
     }
 }

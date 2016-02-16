@@ -3,16 +3,27 @@
 /// <reference path="../Resource/Scripts/noncomponent.js" />
 
 //top bar
+//var pnl_topBar = ApPanel.create('Upbar');
+//var tbl_topBar = ApTable.create(1);
+//tbl_topBar.setTarget();
+//var btn_Logout = ApButton.create('Log out');
+////pnl_topBar.setHtml('<h2>hello</h2>');
+//pnl_topBar.header = false;
+
 var pnl_topBar = ApPanel.create('Upbar');
-var tbl_topBar = ApTable.create(1);
-tbl_topBar.setTarget();
-var btn_A1 = ApButton.create('A1');
-var btn_A2 = ApButton.create('A2');
-var btn_A3 = ApButton.create('A3');
-var btn_A4 = ApButton.create('Log out');
-tbl_topBar.cellShare(4);
-//pnl_topBar.setHtml('<h2>hello</h2>');
 pnl_topBar.header = false;
+var tbl_LOGO = ApTable.create();
+tbl_LOGO.setTarget();
+var img = ApImg.create('../Resource/Themes/LOGO2.png');
+img.setSize(142, 87);
+tbl_LOGO.add(img);
+
+var tbl_topBar = ApTable.create(2);
+tbl_topBar.setTarget();
+var btn_Logout = ApButton.create('');
+btn_Logout.addCls('buttonCassaCon');
+btn_Logout.setMargin('15 0 0 0');
+
 
 //downarea
 var pnl_downArea = ApPanel.create('downArea');
@@ -54,9 +65,18 @@ var pnl_main = ApPanel.create('main');
 
 var myLatlng = { lat: -25.363, lng: 131.044 };
 var marker;
+
+var pnl_group = ApPanel.create();
+pnl_group.header = false;
+var pnl_middle = ApPanel.create();
+pnl_middle.header = false;
+pnl_middle.setFlex(1);
 ApEvent.onlaod = function(){
-    viewPanel.divideV(tbl_topBar, pnl_downArea, tbl_topBar);
-    tbl_topBar.setHeight(40);
+    viewPanel.divideV(pnl_topBar, pnl_downArea, pnl_topBar);
+    pnl_topBar.setHeight(90);
+    pnl_topBar.divideH(tbl_LOGO, pnl_group);
+    pnl_group.divideH(pnl_middle, tbl_topBar, tbl_topBar);
+    tbl_topBar.setWidth(200);
     pnl_downArea.divideH(pnl_sideBar, tab_main);
     pnl_sideBar.setWidth(160);
     pnl_mapData.setWidth(250);

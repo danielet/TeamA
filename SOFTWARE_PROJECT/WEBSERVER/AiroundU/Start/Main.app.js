@@ -14,9 +14,11 @@ console.log(range);
 
 
 tre_sideBar.eClick = function () {
-
+    
 }
-
+btn_Logout.eClick = function(){
+    location.href = '../server/logout.php';
+}
 function load_page(node, pjtType) {
     var exist = true;
     for (var i = 0; i < tab_main.items.length; i++) {

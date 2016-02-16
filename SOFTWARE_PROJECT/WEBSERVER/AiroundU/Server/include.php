@@ -2,7 +2,7 @@
 // sessoin start
 session_start();
 
-include ("./lib.php");
+include ("lib.php");
 
 // Dbconnect
 $DB = sql_connect($db_host, $db_user, $db_pass, $db_name);

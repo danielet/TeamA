@@ -3,7 +3,8 @@
 include ("./include.php");
 //STREAMING DATA UPDATE	
 if($_POST[WORK_TYPE] == "STREAMING"){
-	$sql = "INSERT INTO display (TS,USER_ID, LAT, LNG,CO,NO2,SO2,O3,TEMP,PM25) VALUES ( '".$_POST[TS]."','".$_POST[USER_ID]."','".$_POST[LAT]."','".$_POST[LNG]."','".$_POST[CO]."','".$_POST[NO2]."','".$_POST[SO2]."','".$_POST[O3]."','".$_POST[TEMP]."','".$_POST[PM25]."')";
+	$TTL = $_POST[TS] + 86400;
+	$sql = "INSERT INTO display (TS,USER_ID, LAT, LNG, CO, NO2, SO2, O3, TEMP, PM25, TTL) VALUES ( '".$_POST[TS]."','".$_POST[USER_ID]."','".$_POST[LAT]."','".$_POST[LNG]."','".$_POST[CO]."','".$_POST[NO2]."','".$_POST[SO2]."','".$_POST[O3]."','".$_POST[TEMP]."','".$_POST[PM25]."', '".$TTL."')";
 	$DB->query($sql);
 	
 	if($DB){
@@ -28,7 +29,7 @@ if($_POST[WORK_TYPE] == "STREAMING"){
 	// insert to database
 	$SALT = md5(rand(10, 99));
 	$SALTPASS = md5($_POST[password].$SALT);
-	$query = "INSERT INTO USER (USER_ID, FIRSTNAME, LASTNAME, AFFILIATION, ADDRESS, HASHEDPW, HASHSALT, LOGINCNT, GENDER) VALUES ('".trim($_POST[email])."', '".trim($_POST[first])."', '".trim($_POST[last])."', '".trim($_POST[affiliation])."', '".trim($_POST[address])."', '".trim($SALTPASS)."', '".$SALT."', '0', '".trim($_POST[gender])."')";
+	$query = "INSERT INTO USER (USER_ID, FIRSTNAME, LASTNAME, AFFILIATION, ADDRESS, HASHEDPW, HASHSALT, LOGINCNT, GENDER, ADMIN, JOINDATE) VALUES ('".trim($_POST[email])."', '".trim($_POST[first])."', '".trim($_POST[last])."', '".trim($_POST[affiliation])."', '".trim($_POST[address])."', '".trim($SALTPASS)."', '".$SALT."', '0', '".trim($_POST[gender])."', '0', sysdate())";
 	$result = $DB->query($query);
 	echo 'Welcome';
 	exit;
