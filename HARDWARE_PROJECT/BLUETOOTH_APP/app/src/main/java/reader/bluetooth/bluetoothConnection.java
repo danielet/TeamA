@@ -142,7 +142,7 @@ public class bluetoothConnection extends Thread {
         try {
             Log.d("MATTEO" ,"CLOSE " + mmDevice.getAddress() + " " +mmDevice.getName() );
             OutputStream cmd = mmSocket.getOutputStream();
-            String ss = "MATTEO";
+            String ss = "CLOSE";
             cmd.write(ss.getBytes());
             mmSocket.close();
 
