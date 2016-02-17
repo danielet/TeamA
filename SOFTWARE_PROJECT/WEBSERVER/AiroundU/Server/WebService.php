@@ -1,7 +1,7 @@
 ﻿<?php include ("./include.php");
 //admin user search
 if($_POST[WORK_TYPE] == "SERACH_ADMIN_USER"){
-	$query = "SELECT * FROM USER";
+	$query = "SELECT * FROM USER WHERE ADMIN = 1";
 	$result = $DB->query($query);
 	$fields = array();
 	while($row = mysqli_fetch_assoc($result)) {

@@ -25,6 +25,27 @@ btn_Logout.addCls('buttonCassaCon');
 btn_Logout.setMargin('15 0 0 0');
 
 
+//data selector
+var tbl_selecor = ApTable.create(1);
+tbl_selecor.setTarget();
+var cbo_TYPE = ApCombo.create('Time range', 'dte', 70);
+cbo_TYPE.setWidth(200);
+cbo_TYPE.addItem('10 sec', '0');
+cbo_TYPE.addItem('Average of 1 hour', '1');
+cbo_TYPE.setValue('0')
+
+var chk_O3 = ApCheck.create('O3');
+var chk_SO2 = ApCheck.create('SO2');
+var chk_NO2 = ApCheck.create('NO2');
+var chk_CO = ApCheck.create('CO');
+var chk_PM25 = ApCheck.create('PM25');
+chk_O3.setValue(true);
+chk_SO2.setValue(true);
+chk_NO2.setValue(true);
+chk_CO.setValue(true);
+chk_PM25.setValue(true);
+tbl_selecor.cellShare(6);
+
 //downarea
 var pnl_downArea = ApPanel.create('downArea');
 pnl_downArea.header = false;
@@ -57,7 +78,12 @@ pnl_map.header = false;
 var pnl_mapData = ApPanel.create('Information of area');
 //main
 var tab_main = ApTab.create();
-tab_main.addTab('Home').divideH(pnl_map, pnl_mapData, pnl_mapData);
+
+
+var pnl_mid = ApPanel.create();
+pnl_mid.header = false;
+
+
 pnl_mapData.setCollapsed(true);
 pnl_map.setHtml("<div id='map'></div>")
 
@@ -71,6 +97,7 @@ pnl_group.header = false;
 var pnl_middle = ApPanel.create();
 pnl_middle.header = false;
 pnl_middle.setFlex(1);
+
 ApEvent.onlaod = function(){
     viewPanel.divideV(pnl_topBar, pnl_downArea, pnl_topBar);
     pnl_topBar.setHeight(90);
@@ -79,7 +106,10 @@ ApEvent.onlaod = function(){
     tbl_topBar.setWidth(200);
     pnl_downArea.divideH(pnl_sideBar, tab_main);
     pnl_sideBar.setWidth(160);
-    pnl_mapData.setWidth(250);
+    tab_main.addTab('Home').divideV(tbl_selecor, pnl_mid);
+    tbl_selecor.setHeight(30);
+    pnl_mid.divideH(pnl_map, pnl_mapData, pnl_mapData);
+    pnl_mapData.setWidth(200);
     pnl_mapData.full(tbl_sideBar);
 
     //------------ Google Map source--------
@@ -98,7 +128,6 @@ ApEvent.onlaod = function(){
                 lng: position.coords.longitude
             };
             //make marker
-            make_marker(position.coords.latitude, position.coords.longitude);
             map.addListener('mousedown', function () {
                 pnl_mapData.collapse();
             })

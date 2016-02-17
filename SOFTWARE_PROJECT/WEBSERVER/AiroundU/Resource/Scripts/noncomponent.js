@@ -39,116 +39,118 @@ var DBParams = {
 };
 //getAqi function
 // input, type
-// output, color, aqi value
+// output, color level, aqi value
+// green = 0, yellow = 1, orange = 2, red = 3, purple = 4, Marron = 5
 function getAqi(type, value) {
     //color
-    var green = '#00e400';
-    var yellow = '#ffff00';
-    var orange = '#ff7e00';
-    var red = '#ff0000';
-    var purple = '#99004c';
-    var Maroon = '#7e0023';
-    if (type == '03'){
-        if (value  => 0 && value < 125) {
-            return [green, 0];
-        } else if (value  => 125 && value < 165) {
-            return [orange, ComputingAqi(150, 101, 164, 125, value)];
-        } else if (value  => 165 && value < 205) {
-            return [red, ComputingAqi(200, 151, 204, 165, value)];
-        } else if (value  => 205 && value < 405) {
-            return [purple, ComputingAqi(300, 201, 404, 205, value)];
-        } else if (value  => 405) {
-            if (value => 405 && value < 505) {
-                return [Maroon, ComputingAqi(400, 301, 504, 405, value)];
+    //var green = '#00e400';
+    //var yellow = '#ffff00';
+    //var orange = '#ff7e00';
+    //var red = '#ff0000';
+    //var purple = '#99004c';
+    //var Maroon = '#7e0023';
+    value = parseFloat(value);
+    if (type == 'O3'){
+        if (value  >= 0 && value < 125) {
+            return [0, 0];
+        } else if (value  >= 125 && value < 165) {
+            return [2, ComputingAqi(150, 101, 164, 125, value)];
+        } else if (value  >= 165 && value < 205) {
+            return [3, ComputingAqi(200, 151, 204, 165, value)];
+        } else if (value  >= 205 && value < 405) {
+            return [4, ComputingAqi(300, 201, 404, 205, value)];
+        } else if (value  >= 405) {
+            if (value >= 405 && value < 505) {
+                return [5, ComputingAqi(400, 301, 504, 405, value)];
             } else {
-                return [Maroon, ComputingAqi(500, 401, 604, 505, value)];
+                return [5, ComputingAqi(500, 401, 604, 505, value)];
             }
         }
     } else if (type == 'SO2') {
-        if (value  => 0 && value < 36) {
-            return [green, ComputingAqi(50, 0, 35, 0, value)];
-        } else if (value  => 36 && value < 76) {
-            return [yellow, ComputingAqi(100, 51, 75, 36, value)];
-        } else if (value  => 76 && value < 186) {
-            return [orange, ComputingAqi(150, 101, 185, 76, value)];
-        } else if (value  => 186 && value < 305) {
-            return [red, ComputingAqi(200, 151, 304, 186, value)];
-        } else if (value  => 305 && value < 605) {
-            return [purple, ComputingAqi(300, 201, 604, 305, value)];
-        } else if (value  => 605) {
-            if (value => 405 && value < 505) {
-                return [Maroon, ComputingAqi(400, 301, 804, 605, value)];
+        if (value  >= 0 && value < 36) {
+            return [0, ComputingAqi(50, 0, 35, 0, value)];
+        } else if (value  >= 36 && value < 76) {
+            return [1, ComputingAqi(100, 51, 75, 36, value)];
+        } else if (value  >= 76 && value < 186) {
+            return [2, ComputingAqi(150, 101, 185, 76, value)];
+        } else if (value  >= 186 && value < 305) {
+            return [3, ComputingAqi(200, 151, 304, 186, value)];
+        } else if (value  >= 305 && value < 605) {
+            return [4, ComputingAqi(300, 201, 604, 305, value)];
+        } else if (value  >= 605) {
+            if (value >= 405 && value < 505) {
+                return [5, ComputingAqi(400, 301, 804, 605, value)];
             } else {
-                return [Maroon, ComputingAqi(500, 401, 1004, 805, value)];
+                return [5, ComputingAqi(500, 401, 1004, 805, value)];
             }
         }
     } else if (type == 'NO2') {
-        if (value  => 0 && value < 54) {
-            return [green, ComputingAqi(50, 0, 53, 0, value)];
-        } else if (value  => 54 && value < 101) {
-            return [yellow, ComputingAqi(100, 51, 100, 54, value)];
-        } else if (value  => 101 && value < 361) {
-            return [orange, ComputingAqi(150, 101, 360, 101, value)];
-        } else if (value  => 361 && value < 650) {
-            return [red, ComputingAqi(200, 151, 649, 361, value)];
-        } else if (value  => 650 && value < 1250) {
-            return [purple, ComputingAqi(300, 201, 1249, 650, value)];
-        } else if (value  => 1250) {
-            if (value => 405 && value < 505) {
-                return [Maroon, ComputingAqi(400, 301, 1649, 1250, value)];
+        if (value  >= 0 && value < 54) {
+            return [0, ComputingAqi(50, 0, 53, 0, value)];
+        } else if (value  >= 54 && value < 101) {
+            return [1, ComputingAqi(100, 51, 100, 54, value)];
+        } else if (value  >= 101 && value < 361) {
+            return [2, ComputingAqi(150, 101, 360, 101, value)];
+        } else if (value  >= 361 && value < 650) {
+            return [3, ComputingAqi(200, 151, 649, 361, value)];
+        } else if (value  >= 650 && value < 1250) {
+            return [4, ComputingAqi(300, 201, 1249, 650, value)];
+        } else if (value  >= 1250) {
+            if (value >= 405 && value < 505) {
+                return [5, ComputingAqi(400, 301, 1649, 1250, value)];
             } else {
-                return [Maroon, ComputingAqi(500, 401, 2049, 1650, value)];
+                return [5, ComputingAqi(500, 401, 2049, 1650, value)];
             }
         }
     } else if (type == 'CO') {
-        if (value  => 0 && value < 4.5) {
-            return [green, ComputingAqi(50, 0, 4.4, 0.0, value)];
-        } else if (value  => 4.5 && value < 9.5) {
-            return [yellow, ComputingAqi(100, 51, 9.4, 4.5, value)];
-        } else if (value  => 9.5 && value < 12.5) {
-            return [orange, ComputingAqi(150, 101, 12.4, 9.5, value)];
-        } else if (value  => 12.5 && value < 15.5) {
-            return [red, ComputingAqi(200, 151, 15.4, 12.5, value)];
-        } else if (value  => 15.5 && value < 30.5) {
-            return [purple, ComputingAqi(300, 201, 30.4, 15.5, value)];
-        } else if (value  => 30.5) {
-            if (value => 405 && value < 505) {
-                return [Maroon, ComputingAqi(400, 301, 40.4, 30.5, value)];
+        if (value  >= 0 && value < 4.5) {
+            return [0, ComputingAqi(50, 0, 4.4, 0.0, value)];
+        } else if (value  >= 4.5 && value < 9.5) {
+            return [1, ComputingAqi(100, 51, 9.4, 4.5, value)];
+        } else if (value  >= 9.5 && value < 12.5) {
+            return [2, ComputingAqi(150, 101, 12.4, 9.5, value)];
+        } else if (value  >= 12.5 && value < 15.5) {
+            return [3, ComputingAqi(200, 151, 15.4, 12.5, value)];
+        } else if (value  >= 15.5 && value < 30.5) {
+            return [4, ComputingAqi(300, 201, 30.4, 15.5, value)];
+        } else if (value  >= 30.5) {
+            if (value >= 405 && value < 505) {
+                return [5, ComputingAqi(400, 301, 40.4, 30.5, value)];
             } else {
-                return [Maroon, ComputingAqi(500, 401, 50.4, 40.5, value)];
+                return [5, ComputingAqi(500, 401, 50.4, 40.5, value)];
             }
         }
     } else if (type == 'PM25') {
-        if (value  => 0 && value < 125) {
-            return [green, ComputingAqi(50, 0, 12.0, 0.0, value)];
-        } else if (value  => 0 && value < 12.1) {
-            return [yellow, ComputingAqi(100, 51, 35.4, 12.1, value)];
-        } else if (value  => 12.1 && value < 35.5) {
-            return [orange, ComputingAqi(150, 101, 55.4, 35.5, value)];
-        } else if (value  => 35.5 && value < 55.5) {
-            return [red, ComputingAqi(200, 151, 150.4, 55.5, value)];
-        } else if (value  => 55.5 && value < 150.5) {
-            return [purple, ComputingAqi(300, 201, 250.4, 150.5, value)];
-        } else if (value  => 150.5) {
-            if (value => 405 && value < 505) {
-                return [Maroon, ComputingAqi(400, 301, 350.4, 250.5, value)];
+        if (value  >= 0 && value < 125) {
+            return [0, ComputingAqi(50, 0, 12.0, 0.0, value)];
+        } else if (value  >= 0 && value < 12.1) {
+            return [1, ComputingAqi(100, 51, 35.4, 12.1, value)];
+        } else if (value  >= 12.1 && value < 35.5) {
+            return [2, ComputingAqi(150, 101, 55.4, 35.5, value)];
+        } else if (value  >= 35.5 && value < 55.5) {
+            return [3, ComputingAqi(200, 151, 150.4, 55.5, value)];
+        } else if (value  >= 55.5 && value < 150.5) {
+            return [4, ComputingAqi(300, 201, 250.4, 150.5, value)];
+        } else if (value  >= 150.5) {
+            if (value >= 405 && value < 505) {
+                return [5, ComputingAqi(400, 301, 350.4, 250.5, value)];
             } else {
-                return [Maroon, ComputingAqi(500, 401, 500.4, 350.5, value)];
+                return [5, ComputingAqi(500, 401, 500.4, 350.5, value)];
             }
         }
     } else if (type == 'AQI') {
-        if (value  => 0 && value < 125) {
-            return [green, value];
-        } else if (value  => 0 && value < 51) {
-            return [yellow, value];
-        } else if (value  => 51 && value < 101) {
-            return [orange, value];
-        } else if (value  => 101 && value < 151) {
-            return [red, value];
-        } else if (value  => 151 && value < 201) {
-            return [purple, value];
-        } else if (value  => 201) {
-            return [Maroon, value];
+        if (value  >= 0 && value < 125) {
+            return [0, value];
+        } else if (value  >= 0 && value < 51) {
+            return [1, value];
+        } else if (value  >= 51 && value < 101) {
+            return [2, value];
+        } else if (value  >= 101 && value < 151) {
+            return [3, value];
+        } else if (value  >= 151 && value < 201) {
+            return [4, value];
+        } else if (value  >= 201) {
+            return [5, value];
         }
     }
 }

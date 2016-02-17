@@ -21,6 +21,27 @@ btn_Admin.setMargin('15 0 0 0');
 var pnl_downArea = ApPanel.create('downArea');
 pnl_downArea.header = false;
 
+//data selector
+var tbl_selecor = ApTable.create(1);
+tbl_selecor.setTarget();
+var cbo_TYPE = ApCombo.create('Time range', 'dte', 70);
+cbo_TYPE.setWidth(200);
+cbo_TYPE.addItem('10 sec', '0');
+cbo_TYPE.addItem('Average of 1 hour', '1');
+cbo_TYPE.setValue('0')
+
+var chk_O3 = ApCheck.create('O3');
+var chk_SO2 = ApCheck.create('SO2');
+var chk_NO2 = ApCheck.create('NO2');
+var chk_CO = ApCheck.create('CO');
+var chk_PM25 = ApCheck.create('PM25');
+chk_O3.setValue(true);
+chk_SO2.setValue(true);
+chk_NO2.setValue(true);
+chk_CO.setValue(true);
+chk_PM25.setValue(true);
+tbl_selecor.cellShare(6);
+
 var pnl_sideBar = ApPanel.create('menu');
 
 var tbl_sideBar = ApTable.create(1);
@@ -50,13 +71,19 @@ pnl_group.header = false;
 var pnl_middle = ApPanel.create();
 pnl_middle.header = false;
 pnl_middle.setFlex(1);
+
+var pnl_mid = ApPanel.create();
+pnl_mid.header = false;
 ApEvent.onlaod = function () {
-    viewPanel.divideV(pnl_topBar, pnl_downArea, pnl_topBar);
+    viewPanel.divideV(pnl_topBar, pnl_mid, pnl_topBar);
     pnl_topBar.setHeight(90);
     pnl_topBar.divideH(tbl_LOGO, pnl_group);
     pnl_group.divideH(pnl_middle, tbl_topBar, tbl_topBar);
     tbl_topBar.setWidth(200);
     tbl_LOGO.setWidth(150);
+
+    pnl_mid.divideV(tbl_selecor, pnl_downArea);
+    tbl_selecor.setHeight(30);
     pnl_downArea.divideH(pnl_map, pnl_mapData, pnl_mapData);
     pnl_mapData.setWidth(200);
     pnl_mapData.full(tbl_sideBar);
@@ -77,7 +104,6 @@ ApEvent.onlaod = function () {
                 lng: position.coords.longitude
             };
             //make marker
-            make_marker(position.coords.latitude, position.coords.longitude);
             map.addListener('mousedown', function () {
                 pnl_mapData.collapse();
             })

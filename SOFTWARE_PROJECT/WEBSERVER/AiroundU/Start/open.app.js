@@ -1,7 +1,7 @@
 ﻿/// <reference path="../Resource/Scripts/ext-all-debug.js" />
 /// <reference path="../Resource/Scripts/component.js" />
 /// <reference path="../Resource/Scripts/noncomponent.js" />
-/// <reference path="Open.view.js" />
+/// <reference path="open.view.js" />
 
 //global value
 
@@ -12,28 +12,6 @@ var url = '../Server/WebService.php';
 var range = DBCONN(url, param);
 console.log(range);
 
-function load_page(node, pjtType) {
-    var exist = true;
-    for (var i = 0; i < tab_main.items.length; i++) {
-        if (tab_main.items.items[i].title == node.text)
-            exist = false;
-    }
-    if (exist) {
-        tab_main.addTab(node.text, true).full({
-            html: '<iframe src="../Form/' + node.text + '.html?" id=' + node.value.getValue('FORMCD') + '" width="100%" height="100%" frameborder="0"></iframe>',
-            closable: true,
-            header: false,
-            id: node.value.getValue('FORMCD'),
-            title: node.text
-        });
-        tab_main.setActiveTab(tab_main.items.items.length - 1)
-    } else {
-        for (var i = 0; i < tab_main.items.length; i++) {
-            if (tab_main.items.items[i].title == node.text)
-                tab_main.setActiveTab(i);
-        }
-    }
-}
 function search_streaming() {
 
     for (var i = 0; i < map.markerArr.length; i++) {
@@ -45,7 +23,6 @@ function search_streaming() {
         map.circleArr[i].setMap(null);
     }
     map.circleArr = [];
-
     var param = DBParams.create();
     param.addParam('WORK_TYPE', 'SEARCH_STREAMING');
     var url = '../Server/WebService.php';
@@ -54,7 +31,12 @@ function search_streaming() {
     if (ds[0].data.items.length == 0) { return; }
     for (var i = 0; i < ds[0].data.items.length; i++) {
         var data = ds[0].data.items[i].data;
-        make_marker(data.LAT, data.LNG, data.TEMP, data.O3, data.SO2, data.NO2, data.CO, data.PM25, data.USER_ID);
+        if (cbo_TYPE.getValue() == '0') {
+            make_marker(data.LAT, data.LNG, data.TEMP, data.O3, data.SO2, data.NO2, data.CO, data.PM25, data.USER_ID);
+        } else {
+            make_marker(data.LAT, data.LNG, data.AVG_TEMP, data.AVG_O3, data.AVG_SO2, data.AVG_NO2, data.AVG_CO, data.AVG_PM25, data.USER_ID);
+        }
+        
     }
 }
 var savePos = "";
@@ -131,25 +113,33 @@ function check_color(O3, SO2, NO2, CO, PM25) {
     var Purple = '#99004c';
     var Maroon = '#7e0023';
     var arrColor = [green, yellow, orange, red, Purple, Maroon];
-    var rangeO3 = Array();
-    rangeO3.push(range[0].data.items[0].data.VALUE1);
-    rangeO3.push(range[0].data.items[0].data.VALUE2);
-    rangeO3.push(range[0].data.items[0].data.VALUE3);
-    rangeO3.push(range[0].data.items[0].data.VALUE4);
-    rangeO3.push(range[0].data.items[0].data.VALUE5);
-    rangeO3.push(range[0].data.items[0].data.VALUE5);
-    rangeO3.push(range[0].data.items[0].data.VALUE6);
-    rangeO3.push(range[0].data.items[0].data.VALUE7);
-    rangeO3.push(O3);
-    rangeO3.sort(function (left, right) {
-        return left - right;
-    });
-    /*
-        I = (IH - IL) / (CH -CL) * (C - CL) + IL
-    */
-    //03
+    
+    var arrLevel = [];
+    //push selected data to arrData
+    if (chk_O3.getValue()) {
+        var arrResult = getAqi('O3', O3);
+        arrLevel.push(arrResult[0]);
+    }
+    if (chk_SO2.getValue()) {
+        var arrResult = getAqi('SO2', SO2);
+        arrLevel.push(arrResult[0]);
+    }
+    if (chk_NO2.getValue()) {
+        var arrResult = getAqi('NO2', NO2);
+        arrLevel.push(arrResult[0]);
+    }
+    if (chk_CO.getValue()) {
+        var arrResult = getAqi('CO', CO);
+        arrLevel.push(arrResult[0]);
+    }
+    if (chk_PM25.getValue()) {
+        var arrResult = getAqi('PM25', PM25);
+        arrLevel.push(arrResult[0]);
+    }
+    var colorLevel = Math.max.apply(null, arrLevel)
 
-    return arrColor[rangeO3.indexOf(O3) - 2];
+    return arrColor[colorLevel];
+   
 }
 
 btn_Admin.eClick = function () {
