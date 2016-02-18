@@ -7,6 +7,11 @@ import string
 import hashlib
 
 
+####
+#EXAMPLE BY KYU
+####
+
+
 #THREAD PART
 import threading 
 #import thread
