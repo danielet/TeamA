@@ -10,12 +10,13 @@ import csv
 import string
 import hashlib
 
+import urllib
+import urllib2
+import json
 
-#THREAD PART
-import threading 
-
-#BLUETOOTH LIBRARY
-from bluetooth import *
+import socket
+import fcntl
+import struct
 #MATTEO'LIBRARY
 import readFiles
 
@@ -27,6 +28,12 @@ ctrlPrint 	= 1
 ctrlLoop 	= 1
 client_sock	= -1
 
+
+
+def getHwAddr(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', ifname[:15]))
+    return ':'.join(['%02x' % ord(char) for char in info[18:24]])
 
 
 
@@ -68,21 +75,16 @@ def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 	ppb	  = voltagePollution * ppbOvermV;
 	return round(ppb,3)
 
-def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEnable):
+def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_REAL):
 
-	global ctrlLoop	
-	global ctrlPrint
-	global client_sock
 	timeinterval=1
-	
-
 	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","NO2_WE", "NO2_AE","INT_TEMP"];
 	Vref 	 		= int(conf_values[0]); 
 	stepResolution 		= Vref/float(conf_values[1]);
 	#TEMPERATURE SENSOR
 	V20C			= float(conf_values[2])
 	timesample2SendPacket 	= int(conf_values[-1])
-	count = timesample2SendPacket;
+	count 			= timesample2SendPacket;
 
 	if(ser.isOpen()):
 		print("SERIAL OPENED");
@@ -127,114 +129,37 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, lockLoop, lockCSVWriteEna
 				if(count == 0 ):
 					string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(SO2_ppb)+","+str(NO2_ppb)+","+str(PM25)+","+str(PM10)+","+str(temp);
 					print("SEND DATA: " + string2Send);
+					#
+
+					values = {'uid' : userid , 'mac' : mac_address, 'time': '2016/03/07 00:00:00'}
+					req = urllib2.Request(URL_REAL, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+					response = urllib2.urlopen(req)
+					html = response.read()
+					response.close() 
+					print html			
 					count  = timesample2SendPacket;
-					try:
-						lockCSVWriteEnable.acquire()
-						if(ctrlPrint == 1 and client_sock != -1):
-							client_sock.send(string2Send)
-							
-						lockCSVWriteEnable.release()
-					except BluetoothError as error:
-						print "SOCKET CLOSE BY APP"
-					#		ctrlLoopTmp = 0
-					#		break	
 			
-			lockLoop.acquire()
-			ctrlLoopTmp = ctrlLoop
-			lockLoop.release()			
 			time.sleep(timeinterval)
 	else:
 		print("SERIAL ERROR")
 	print("OUT FROM MAIN")
-	#ser.close()
-##############################################
-
-##############################################
-
-def controlFromBT(client_sock, lockLoop):
-	global ctrlLoop
-	ctrlLoopTmp = 1
-	while(ctrlLoopTmp):
-		try:
-			recv1 = client_sock.recv(1024)
-			print("RECV: " + str(recv1))
-			ctrlLoop = 0
-			print("RECV: %s "% recv1)
-			if(recv1 == "CLOSE"):
-				lockLoop.acquire()
-				ctrlLoop = 0;
-				ctrlLoopTmp = ctrlLoop
-				lockLoop.release()
-				break
-		#COMMAND PART
-
-		except BluetoothError as error:
-		 	lockLoop.acquire()
-			ctrlLoop = 0
-			lockLoop.release()
-			break
-##############################################
 
 
-def BTThread(lockLoop, lockCSVWriteEnable):
-	global ctrlPrint
-	global client_sock
-	uuid = "00001101-0000-1000-8000-00805F9B34FB";
-	print("WAIT BLUETOOTH CONNECTION");
-	while(1):
-		server_sock	= BluetoothSocket(RFCOMM)
-		server_sock.bind(("",1))
-		server_sock.listen(1)
-	
-		port 		= server_sock.getsockname()[1]
-		advertise_service(server_sock , "TEST", service_id= uuid);
-		print("WAIT BLUETOOTH CONNECTION");
-		client_sock_tmp,address = server_sock.accept()
-		print "Accepted connection from ",address
-	
-		t=threading.Thread(target=controlFromBT, args=(client_sock_tmp,lockLoop))
-		t.start()
-#WRITE ON FILE	
-		lockCSVWriteEnable.acquire()
-		ctrlPrint = 1
-		client_sock = client_sock_tmp
-		lockCSVWriteEnable.release()
-		t.join()
-		lockCSVWriteEnable.acquire()
-		ctrlPrint 	= 0
-		client_sock.close()
-		server_sock.close()
-		client_sock 	= -1
-		lockCSVWriteEnable.release()
-##############################################
-def waitBluetoothConnection(fileValues , lockLoop, lockCSVWrite):
+def startStation(fileValues, userid ,mac_address, URL_REAL):
 	global ctrlLoop
 
 	#ser 		= serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=0)
 	ser 	= serial.Serial('/dev/ttyMCC', 115200,timeout=0)
-	t=threading.Thread(target=BTThread,args=(lockLoop, lockCSVWrite))
-	t.start()
-	while(1):
-		print "Wait"
-		time.sleep(1)
-		conf_values	= fileValues.readConfiguration();	
+	print "Wait"
+	time.sleep(1)
+	conf_values	= fileValues.readConfiguration();	
+	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+        filename        = hashlib.md5(randomname).hexdigest() + '.csv'
+        dirName         = "/home/udooer/TeamA/HARDWARE_PROJECT/PYTHON_PROGRAM/OUTPUT_FILE/"
+        csv_file        = open(dirName+filename, 'w')
 
-
-        	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
-        	filename        = hashlib.md5(randomname).hexdigest() + '.csv'
-        	dirName         = "/home/udooer/TeamA/HARDWARE_PROJECT/PYTHON_PROGRAM/OUTPUT_FILE/"
-        	csv_file        = open(dirName+filename, 'w')
-
-		t=threading.Thread(target=mainLoop,args=(fileValues, ser, csv_file, conf_values,lockLoop, lockCSVWrite))
-		t.start()
-		t.join()
-		csv_file.close()
-		lockLoop.acquire()
-                ctrlLoop = 1;
-		print "QUA GHE RIVO??%d" % ctrlLoop
-                lockLoop.release()
-	
-	print("CLOSE SERIAL")
+	mainLoop(fileValues, ser, csv_file, conf_values, userid ,mac_address, URL_REAL)
+	csv_file.close()
 	ser.close()
 ######################################################################
 
@@ -245,10 +170,39 @@ if __name__ == "__main__":
 	zeroOffsetFile 	= 'ZERO_A4_25000015.csv';
 	MAIN_FILE_CONF 	= 'MAIN_CONF.csv'; 
 	fileValues 	= readFiles.readFiles(pathconfig , temperatureFile,zeroOffsetFile, MAIN_FILE_CONF)
-	lockLoop 	= threading.Lock()
-	lockCSVWrite	= threading.Lock()
 	
-	#signal.signal(signal.SIGINT, signal_handler)
-	
-	waitBluetoothConnection(fileValues, lockLoop, lockCSVWrite)
-	
+	mac_address=getHwAddr('wlan0')
+	#1. LOGIN
+	URL_LOGIN = 'http://airpollution.calit2.net/TeamC/php/receive_data/receive_insert_device.php'
+	query_args 	= { 'data':'matteo.danieletto@gmail.com,Esedra#84,'+mac_address+',UDOO,0,0,0' }
+	data 		= urllib.urlencode(query_args)
+
+	request		= urllib2.Request(URL_LOGIN, data) 
+	response = urllib2.urlopen(request)
+	html = response.read()
+	print html
+	response.close()  # best practice to close the file
+	#2. START SESSION	
+	URL_SESSION 	='http://airpollution.calit2.net/TeamC/php/receive_data/receive_session_start.php'
+
+	values = {'uid' : 'matteo.danieletto@gmail.com' , 'mac' : mac_address, 'time': '2016/03/07 00:00:00', 'smac' :'EC:11:27:6F:BB:54'}
+	req = urllib2.Request(URL_SESSION, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+	response = urllib2.urlopen(req)
+	html = response.read()
+	response.close() 
+	print html
+
+	URL_REAL 	='http://airpollution.calit2.net/TeamC/php/receive_data/receive_realtime_data.php'
+	startStation(fileValues, userid ,mac_address, URL_REAL)	
+	#$user_id 	= $obj->{'user_id'};
+#	$mac 		= $obj->{'mac'};
+#	$time 		= $obj->{'time'};
+#	$lat 		= $obj->{'lat'};
+#	$lng 		= $obj->{'lng'};
+#	$co 		= $obj->{'co'};
+#	$so2 		= $obj->{'so2'};
+#	$no2 		= $obj->{'no2'};
+#	$o3 		= $obj->{'o3'};
+#	$temp 		= $obj->{'temp'};
+#	$pm2d5 		= $obj->{'pm2.5'};
+#	$hb 		= $obj->{'hb'};	
