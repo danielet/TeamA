@@ -4,6 +4,7 @@
 
 
 import serial
+import datetime
 import time
 import random
 import csv
@@ -23,20 +24,10 @@ import readFiles
 import random
 #
 #import signal
-#GLOBAL VARIABLE
-ctrlPrint 	= 1
-ctrlLoop 	= 1
-client_sock	= -1
-
-
-
 def getHwAddr(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', ifname[:15]))
     return ':'.join(['%02x' % ord(char) for char in info[18:24]])
-
-
-
 
 def temperature(stepResolution, stepIntTemp, V20C):
 	intTemp = (((((4096)/float(4096/2)/1000) * int(stepIntTemp))-V20C)*1000);
@@ -86,6 +77,10 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 	timesample2SendPacket 	= int(conf_values[-1])
 	count 			= timesample2SendPacket;
 
+
+	lat = 32.882570
+	lng = -117.234609
+	
 	if(ser.isOpen()):
 		print("SERIAL OPENED");
 		ser.flushInput()
@@ -99,15 +94,15 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 			arrayline 	= lineread.split(",")
 			ts 		= time.time()
 			listValue 	= [ts]
-			print arrayline
+			timeFormatted = datetime.datetime.fromtimestamp(int(ts)).strftime('%Y/%m/%d %H:%M:%S')
 			for valueSensor in arrayline:
 				listValue.append(valueSensor);
 			if((len(listValue) == 9) and not('' in listValue)):
 				temp  = temperature(stepResolution, listValue[-1], V20C);
-				CO_ppb=volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp);
-				NO2_ppb=volt2PPB(fileValues, stepResolution, float(listValue[5]), float(listValue[6]), 'NO2A4', temp);
-				NO2_O3_ppb=volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp);
-				O3_ppb = NO2_O3_ppb - NO2_ppb
+				CO_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp));
+				NO2_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[5]), float(listValue[6]), 'NO2A4', temp));
+				NO2_O3_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp));
+				O3_ppb = abs(NO2_O3_ppb - NO2_ppb)
 				#SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp);
 				SO2_ppb=random.randint(0, 20)
 				PM25=PM25Value(float(listValue[-2]));
@@ -121,22 +116,17 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 				print("TEMP:" + str(temp));			
 				chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, NO2_ppb,PM25 ,temp];
 				#IF BT CONNECTION OPEN THEN WRITE	
-				lockCSVWriteEnable.acquire()
-				if(ctrlPrint == 1):
-					csv_writer.writerow(chemicalQuantities2Print)
-				lockCSVWriteEnable.release()	
+				csv_writer.writerow(chemicalQuantities2Print)
 				count = count -1;
 				if(count == 0 ):
 					string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(SO2_ppb)+","+str(NO2_ppb)+","+str(PM25)+","+str(PM10)+","+str(temp);
 					print("SEND DATA: " + string2Send);
-					#
-
-					values = {'uid' : userid , 'mac' : mac_address, 'time': '2016/03/07 00:00:00'}
+					values = {'user_id' : userid , 'mac' : mac_address, 'time': timeFormatted , 'lat': lat , 'lng' : lng,
+						'co': CO_ppb, 'so2': SO2_ppb, 'no2': NO2_ppb, 'o3' : O3_ppb, 'temp' : temp, 'pm2d5': PM25, 'hb':0}
 					req = urllib2.Request(URL_REAL, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
 					response = urllib2.urlopen(req)
 					html = response.read()
 					response.close() 
-					print html			
 					count  = timesample2SendPacket;
 			
 			time.sleep(timeinterval)
@@ -146,7 +136,6 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 
 
 def startStation(fileValues, userid ,mac_address, URL_REAL):
-	global ctrlLoop
 
 	#ser 		= serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=0)
 	ser 	= serial.Serial('/dev/ttyMCC', 115200,timeout=0)
@@ -170,11 +159,15 @@ if __name__ == "__main__":
 	zeroOffsetFile 	= 'ZERO_A4_25000015.csv';
 	MAIN_FILE_CONF 	= 'MAIN_CONF.csv'; 
 	fileValues 	= readFiles.readFiles(pathconfig , temperatureFile,zeroOffsetFile, MAIN_FILE_CONF)
+	userid 		= 'calit2@eng.ucsd.edu'
+	pswd 		= 'ucsd'
+	ts 		= time.time()
+	timesession 	= datetime.datetime.fromtimestamp(int(ts)).strftime('%Y/%m/%d %H:%M:%S')
 	
 	mac_address=getHwAddr('wlan0')
 	#1. LOGIN
 	URL_LOGIN = 'http://airpollution.calit2.net/TeamC/php/receive_data/receive_insert_device.php'
-	query_args 	= { 'data':'matteo.danieletto@gmail.com,Esedra#84,'+mac_address+',UDOO,0,0,0' }
+	query_args 	= { 'data':userid+','+pswd +','+mac_address+',UDOO,0,0,0' }
 	data 		= urllib.urlencode(query_args)
 
 	request		= urllib2.Request(URL_LOGIN, data) 
@@ -185,7 +178,7 @@ if __name__ == "__main__":
 	#2. START SESSION	
 	URL_SESSION 	='http://airpollution.calit2.net/TeamC/php/receive_data/receive_session_start.php'
 
-	values = {'uid' : 'matteo.danieletto@gmail.com' , 'mac' : mac_address, 'time': '2016/03/07 00:00:00', 'smac' :'EC:11:27:6F:BB:54'}
+	values = {'uid' : userid  , 'mac' : mac_address, 'time': timesession, 'smac' :'EC:11:27:6F:BB:54'}
 	req = urllib2.Request(URL_SESSION, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
 	response = urllib2.urlopen(req)
 	html = response.read()
@@ -194,15 +187,4 @@ if __name__ == "__main__":
 
 	URL_REAL 	='http://airpollution.calit2.net/TeamC/php/receive_data/receive_realtime_data.php'
 	startStation(fileValues, userid ,mac_address, URL_REAL)	
-	#$user_id 	= $obj->{'user_id'};
-#	$mac 		= $obj->{'mac'};
-#	$time 		= $obj->{'time'};
-#	$lat 		= $obj->{'lat'};
-#	$lng 		= $obj->{'lng'};
-#	$co 		= $obj->{'co'};
-#	$so2 		= $obj->{'so2'};
-#	$no2 		= $obj->{'no2'};
-#	$o3 		= $obj->{'o3'};
-#	$temp 		= $obj->{'temp'};
-#	$pm2d5 		= $obj->{'pm2.5'};
-#	$hb 		= $obj->{'hb'};	
+
