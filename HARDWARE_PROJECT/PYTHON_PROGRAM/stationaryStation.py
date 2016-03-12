@@ -23,7 +23,23 @@ import readFiles
 
 import random
 #
-#import signal
+import signal
+import sys
+
+
+ctrlLoopTmp = 1;
+
+def signal_handler(signal, frame):
+	global ctrlLoopTmp
+	print('Pressed Ctrl+c');
+	ctrlLoopTmp = 0
+
+
+
+
+
+
+
 def getHwAddr(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     info = fcntl.ioctl(s.fileno(), 0x8927,  struct.pack('256s', ifname[:15]))
@@ -39,7 +55,7 @@ def PM25Value(analogvalue):
 	analogtotal = (analogvalue*(4096))/(float(4096/2)*1000);
     	hppcf = (240.0*pow(analogtotal,6) - 2491.3*pow(analogtotal,5) + 9448.7*pow(analogtotal,4) - 14840.0*pow(analogtotal,3) + 10684.0*pow(analogtotal,2) + 2211.8*(analogtotal) + 7.9623);
     	ugm3 = .518 + .00274 * hppcf;
-	return ugm3
+	return round(ugm3,3)
 
 def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 
@@ -67,7 +83,7 @@ def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 	return round(ppb,3)
 
 def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_REAL):
-
+	global ctrlLoopTmp
 	timeinterval=1
 	arrayLabel=["TIMESTAMP","CO_WE", "CO_AE", "O3_WE","O3_AE","NO2_WE", "NO2_AE","INT_TEMP"];
 	Vref 	 		= int(conf_values[0]); 
@@ -87,7 +103,7 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 
 		csv_writer = csv.writer(csv_file)
 
-		ctrlLoopTmp = 1;
+
 		while(ctrlLoopTmp):
 			ser.write("1");
 			lineread 	= ser.readline().rstrip()
@@ -104,7 +120,7 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 				NO2_O3_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp));
 				O3_ppb = abs(NO2_O3_ppb - NO2_ppb)
 				#SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp);
-				SO2_ppb=random.randint(0, 20)
+				SO2_ppb=random.randint(0, 100)/10.0;
 				PM25=PM25Value(float(listValue[-2]));
 				PM10=1;
 				print (arrayLabel);
@@ -144,17 +160,31 @@ def startStation(fileValues, userid ,mac_address, URL_REAL):
 	conf_values	= fileValues.readConfiguration();	
 	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
         filename        = hashlib.md5(randomname).hexdigest() + '.csv'
-        dirName         = "/home/udooer/TeamA/HARDWARE_PROJECT/PYTHON_PROGRAM/OUTPUT_FILE/"
-        csv_file        = open(dirName+filename, 'w')
+        dirName         = "./OUTPUT_FILE/"
+        #CHECK DIRECTORY
+	csv_file        = open(dirName+filename, 'w')
 
 	mainLoop(fileValues, ser, csv_file, conf_values, userid ,mac_address, URL_REAL)
 	csv_file.close()
 	ser.close()
+	#SEND FILE SESSION AND CLOSE SESSION
+	URL_END_SESSION 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_session_end.php'
+	ts 		= time.time()
+	timesession 	= datetime.datetime.fromtimestamp(int(ts)).strftime('%Y/%m/%d %H:%M:%S')
+	values = {'uid' : userid  , 'mac' : mac_address, 'time': timesession}
+	req = urllib2.Request(URL_END_SESSION, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+	response = urllib2.urlopen(req)
+	html = response.read()
+	response.close() 
+	print html
 ######################################################################
 
 if __name__ == "__main__":
 	#READ FILES CONFIGURE
-	pathconfig 	= '/home/udooer/TeamA/HARDWARE_PROJECT/PYTHON_PROGRAM/CONFIG_FILE';
+
+	signal.signal(signal.SIGINT, signal_handler)
+
+	pathconfig 	= './CONFIG_FILE';
 	temperatureFile	= 'lookupTableSensors.csv';
 	zeroOffsetFile 	= 'ZERO_A4_25000015.csv';
 	MAIN_FILE_CONF 	= 'MAIN_CONF.csv'; 
@@ -166,7 +196,7 @@ if __name__ == "__main__":
 	
 	mac_address=getHwAddr('wlan0')
 	#1. LOGIN
-	URL_LOGIN = 'http://airpollution.calit2.net/TeamC/php/receive_data/receive_insert_device.php'
+	URL_LOGIN = 'http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_insert_device.php'
 	query_args 	= { 'data':userid+','+pswd +','+mac_address+',UDOO,0,0,0' }
 	data 		= urllib.urlencode(query_args)
 
@@ -176,7 +206,7 @@ if __name__ == "__main__":
 	print html
 	response.close()  # best practice to close the file
 	#2. START SESSION	
-	URL_SESSION 	='http://airpollution.calit2.net/TeamC/php/receive_data/receive_session_start.php'
+	URL_SESSION 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_session_start.php'
 
 	values = {'uid' : userid  , 'mac' : mac_address, 'time': timesession, 'smac' :'EC:11:27:6F:BB:54'}
 	req = urllib2.Request(URL_SESSION, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
@@ -185,6 +215,6 @@ if __name__ == "__main__":
 	response.close() 
 	print html
 
-	URL_REAL 	='http://airpollution.calit2.net/TeamC/php/receive_data/receive_realtime_data.php'
+	URL_REAL 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_realtime_data.php'
 	startStation(fileValues, userid ,mac_address, URL_REAL)	
-
+	print "END"
