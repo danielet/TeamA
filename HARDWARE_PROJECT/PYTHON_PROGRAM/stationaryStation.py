@@ -15,6 +15,7 @@ import urllib
 import urllib2
 import json
 
+
 import socket
 import fcntl
 import struct
@@ -26,6 +27,7 @@ import random
 import signal
 import sys
 
+import shutil
 
 ctrlLoopTmp = 1;
 
@@ -53,8 +55,8 @@ def temperature(stepResolution, stepIntTemp, V20C):
 def PM25Value(analogvalue):
 
 	analogtotal = (analogvalue*(4096))/(float(4096/2)*1000);
-    	hppcf = (240.0*pow(analogtotal,6) - 2491.3*pow(analogtotal,5) + 9448.7*pow(analogtotal,4) - 14840.0*pow(analogtotal,3) + 10684.0*pow(analogtotal,2) + 2211.8*(analogtotal) + 7.9623);
-    	ugm3 = .518 + .00274 * hppcf;
+	hppcf = (240.0*pow(analogtotal,6) - 2491.3*pow(analogtotal,5) + 9448.7*pow(analogtotal,4) - 14840.0*pow(analogtotal,3) + 10684.0*pow(analogtotal,2) + 2211.8*(analogtotal) + 7.9623);
+	ugm3 = .518 + .00274 * hppcf;
 	return round(ugm3,3)
 
 def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
@@ -81,6 +83,10 @@ def volt2PPB(fileValues,stepResolution, stepWE, stepAE, pollution, temperature):
 	voltagePollution = (voltageWE - zeroVoltageWE) - n*(voltageAE - zeroVoltageAE);
 	ppb	  = voltagePollution * ppbOvermV;
 	return round(ppb,3)
+
+
+
+#ENCODE PART
 
 def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_REAL):
 	global ctrlLoopTmp
@@ -118,7 +124,7 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 				CO_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[1]), float(listValue[2]),'COA4', temp));
 				NO2_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[5]), float(listValue[6]), 'NO2A4', temp));
 				NO2_O3_ppb=abs(volt2PPB(fileValues, stepResolution, float(listValue[3]), float(listValue[4]), 'O3A4', temp));
-				O3_ppb = abs(NO2_O3_ppb - NO2_ppb)
+				O3_ppb = abs(round(NO2_O3_ppb - NO2_ppb , 3))
 				#SO2_ppb=volt2PPB(fileValues, stepResolution, 1024, 1024, 'SO2A4', temp);
 				SO2_ppb=random.randint(0, 100)/10.0;
 				PM25=PM25Value(float(listValue[-2]));
@@ -130,19 +136,21 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 				print("NO2 ppb:" + str(round(NO2_ppb,3)));			
 				print("PM2.5 u/m3:" + str(round(PM25,3)));			
 				print("TEMP:" + str(temp));			
-				chemicalQuantities2Print = [ts,CO_ppb, O3_ppb, NO2_ppb,PM25 ,temp];
+				chemicalQuantities2Print = [str(ts),str(CO_ppb), str(O3_ppb), str(NO2_ppb),str(PM25) ,str(temp)];
 				#IF BT CONNECTION OPEN THEN WRITE	
-				csv_writer.writerow(chemicalQuantities2Print)
+				csv_writer.writerow([s.encode("utf-8") for s in chemicalQuantities2Print])
 				count = count -1;
 				if(count == 0 ):
 					string2Send = str(CO_ppb)+","+str(O3_ppb)+","+str(SO2_ppb)+","+str(NO2_ppb)+","+str(PM25)+","+str(PM10)+","+str(temp);
 					print("SEND DATA: " + string2Send);
 					values = {'user_id' : userid , 'mac' : mac_address, 'time': timeFormatted , 'lat': lat , 'lng' : lng,
 						'co': CO_ppb, 'so2': SO2_ppb, 'no2': NO2_ppb, 'o3' : O3_ppb, 'temp' : temp, 'pm2d5': PM25, 'hb':0}
+				
 					req = urllib2.Request(URL_REAL, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+					
 					response = urllib2.urlopen(req)
 					html = response.read()
-					response.close() 
+					#response.close() 
 					count  = timesample2SendPacket;
 			
 			time.sleep(timeinterval)
@@ -150,17 +158,16 @@ def mainLoop(fileValuesa, ser, csv_file,  conf_values, userid ,mac_address, URL_
 		print("SERIAL ERROR")
 	print("OUT FROM MAIN")
 
-
 def startStation(fileValues, userid ,mac_address, URL_REAL):
 
 	#ser 		= serial.Serial('/dev/ttyMCC', 115200, serial.EIGHTBITS , serial.PARITY_NONE ,timeout=0)
 	ser 	= serial.Serial('/dev/ttyMCC', 115200,timeout=0)
-	print "Wait"
+	print ("Wait")
 	time.sleep(1)
 	conf_values	= fileValues.readConfiguration();	
 	randomname      = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
-        filename        = hashlib.md5(randomname).hexdigest() + '.csv'
-        dirName         = "./OUTPUT_FILE/"
+	filename        = hashlib.md5(randomname).hexdigest() + '.csv'
+	dirName         = "./OUTPUT_FILE/"
         #CHECK DIRECTORY
 	csv_file        = open(dirName+filename, 'w')
 
@@ -168,15 +175,23 @@ def startStation(fileValues, userid ,mac_address, URL_REAL):
 	csv_file.close()
 	ser.close()
 	#SEND FILE SESSION AND CLOSE SESSION
-	URL_END_SESSION 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_session_end.php'
+	URL_END_SESSION 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_session_FIX_end.php'
 	ts 		= time.time()
 	timesession 	= datetime.datetime.fromtimestamp(int(ts)).strftime('%Y/%m/%d %H:%M:%S')
-	values = {'uid' : userid  , 'mac' : mac_address, 'time': timesession}
-	req = urllib2.Request(URL_END_SESSION, json.dumps(values), headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+	
+	
+
+	values = {'uid' : userid  , 'mac' : mac_address, 'time': timesession, 'filename' : filename}
+
+	req = urllib2.Request(URL_END_SESSION, json.dumps(values) ,headers={'Content-type': 'application/json', 'Accept': 'application/json' })
 	response = urllib2.urlopen(req)
 	html = response.read()
 	response.close() 
 	print html
+	formerPath  = dirName+filename
+	serverPosition = "/home/udooer/SESSION_FILES/"+filename
+	shutil.move(formerPath,serverPosition)
+
 ######################################################################
 
 if __name__ == "__main__":
@@ -203,7 +218,7 @@ if __name__ == "__main__":
 	request		= urllib2.Request(URL_LOGIN, data) 
 	response = urllib2.urlopen(request)
 	html = response.read()
-	print html
+	print (html)
 	response.close()  # best practice to close the file
 	#2. START SESSION	
 	URL_SESSION 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_session_start.php'
@@ -213,8 +228,8 @@ if __name__ == "__main__":
 	response = urllib2.urlopen(req)
 	html = response.read()
 	response.close() 
-	print html
+	print (html)
 
 	URL_REAL 	='http://airpollution.calit2.net/WEBSITE/php/receive_data/receive_realtime_data.php'
 	startStation(fileValues, userid ,mac_address, URL_REAL)	
-	print "END"
+	print ("END")
